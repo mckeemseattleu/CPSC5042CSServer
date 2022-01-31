@@ -12,7 +12,7 @@
 
 RPCServer::RPCServer()
 {
-    m_rpcCount = 0;
+    m_rpcCount = 0; 
 };
 
 RPCServer::~RPCServer() {};
