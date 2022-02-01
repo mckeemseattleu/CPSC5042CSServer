@@ -1,14 +1,17 @@
-#include "RPCServer.h"
-
-
-
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <vector>
+#include <iterator>
+
+#include "RPCServer.h"
+
 #define PORT 8080
+
+using namespace std;
 
 RPCServer::RPCServer()
 {
@@ -17,7 +20,10 @@ RPCServer::RPCServer()
 
 RPCServer::~RPCServer() {};
 
-// Will do all the startup tasks
+/*
+* StartServer will create a server on a Port that was passed in, and create a socket
+*/
+
 bool RPCServer::StartServer()
 {
     int opt = 1;
@@ -59,7 +65,11 @@ bool RPCServer::StartServer()
     return true;
 }
 
-// Will wait for a Client it can accept
+/*
+* Will accept a new connection by listening on it's address
+*
+*/
+
 bool RPCServer::ListenForClient()
 {
     int new_socket;
@@ -76,32 +86,106 @@ bool RPCServer::ListenForClient()
     return true;
 }
 
+/*
+* Going to populate a String vector with tokens extracted from the string the client sent.
+* The delimter will be a ; 
+* An example buffer could be "connect;1;5;abc;def;hello world"
+*/
+void RPCServer::ParseTokens(char * buffer, std::vector<std::string> & a)
+{
+    char* token;
+    char* rest = (char *) buffer;
 
-// First one in this function should be a connect, and it 
-// will continue try to process RPC's until a Disconnect happens
+    while ((token = strtok_r(rest, ";", &rest)))
+    {
+        printf("%s\n", token);
+        a.push_back(token);
+    }
+
+    return;
+}
+
+/*
+* ProcessRPC will examine buffer and will essentially control
+*/
 bool RPCServer::ProcessRPC()
 {
-    const char* rpcs[] = { "connect", "disconnect" };
+    const char* rpcs[] = { "connect", "disconnect", "status"};
+    char buffer[8192];
+    std::vector<std::string> arrayTokens;
+    int valread = 0;
+    bool bConnected = false;
     bool bStatusOk = true;
+    const int RPCTOKEN = 0;
+    bool bContinue = true;
 
-    while (bStatusOk == true)
+    while ((bContinue) && (bStatusOk))
     {
-        // Read Buffer
-        // Parse Buffer until it gets to RPC=
-        // Parse Buffer until it gets to Next SemiColon
+        // Should be blocked when a new RPC has not called us yet
+        if ((valread = read(this->m_server_fd, buffer, sizeof(buffer))) <= 0)
+        {
+            break;
+        }
+        printf("%s\n", buffer);
+
+        arrayTokens.clear();
+        this->ParseTokens(buffer, arrayTokens);
+
+        // Enumerate through the tokens. The first token is always the specific RPC
+        for (vector<string>::iterator t = arrayTokens.begin(); t != arrayTokens.end(); ++t)
+        {
+            printf("token = %s\n", t);
+        }
+
+        // string statements are not supported with a switch, so using if/else logic to dispatch
+        string aString = arrayTokens[RPCTOKEN];
+
+        if ((bConnected == false) && (aString == "connect"))
+            bStatusOk = ProcessConnectRPC(arrayTokens);  // Connect RPC
+
+        else if ((bConnected == true) && (aString == "disconnect"))
+        {
+            bStatusOk = ProcessDisconnectRPC();
+            bContinue = false; // We are going to leave this loop, as we are done
+        }
+
+        else if ((bConnected == true) && (aString == "status"))
+            bStatusOk = ProcessStatusRPC();   // Status RPC
+
+        else 
+        {
+            // Not in our list, perhaps, print out what was sent
+        }
+
     }
-    // read the first argument: {RPC=<>,InputArgs=<;;> }
 
-    // If firstRPC is not a "connect" then error
-    // If RPC's don't match with our list, then error
-    // If we get a "disconnect" then leave function
-
-    //Write the following: {OutputArgs=<>}
     return true;
 }
 
-bool RPCServer::ProcessConnectRPC()
+bool RPCServer::ProcessConnectRPC(std::vector<std::string> & arrayTokens)
 {
+    const int USERNAMETOKEN = 1;
+    const int PASSWORDTOKEN = 2;
+
+    // Strip out tokens 1 and 2 (username, password)
+    string userNameString = arrayTokens[USERNAMETOKEN];
+    string passwordString = arrayTokens[PASSWORDTOKEN];
+    char szBuffer[80];
+
+    // Our Authentication Logic. Looks like Mike/Mike is only valid combination
+    if ((userNameString == "mike") && (passwordString == "mike"))
+    {
+        strcpy(szBuffer, "1;"); // Connected
+    }
+    else
+    {
+        strcpy(szBuffer, "0;"); // Not Connected
+    }
+
+    // Send Response back on our socket
+
+    send(this->m_server_fd, szBuffer, strlen(szBuffer), 0);
+
     return true;
 }
 

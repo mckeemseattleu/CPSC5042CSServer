@@ -21,6 +21,9 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <vector>
+#include <iterator>
+
 
 class RPCServer
 {
@@ -31,6 +34,7 @@ public:
     bool ListenForClient();
     bool ProcessRPC();
     int getRpcCount() { return m_rpcCount; }
+    void ParseTokens(char* buffer, std::vector<std::string>& a);
 
 private:
     int m_rpcCount;
@@ -38,9 +42,10 @@ private:
 
     // First one in this function should be a connect, and it 
     // will continue try to process RPC's until a Disconnect happens
-    bool ProcessConnectRPC();
+    bool ProcessConnectRPC(std::vector<std::string>& arrayTokens);
     bool ProcessStatusRPC();
     bool ProcessDisconnectRPC();
+
 
 };
 

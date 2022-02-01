@@ -7,6 +7,12 @@ int main()
     bool statusOk = true;
     RPCServer* serverObj = new RPCServer();
 
+#if 0
+    std::vector<std::string> tokArray;
+    char buffer[128] = { "connect;mike;mike" };
+    serverObj->ParseTokens(buffer, tokArray);
+#endif
+    // Print it out
 
     statusOk = serverObj->StartServer();
     printf("Endless loop, as server is up always");
