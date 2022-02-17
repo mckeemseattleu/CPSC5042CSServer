@@ -22,7 +22,7 @@ int main(int argc, char const* argv[])
     while (statusOk)
     {
         statusOk = serverObj->ListenForClient();
-        statusOk = serverObj->ProcessRPC(); // Launch thread
+        //statusOk = serverObj->ProcessRPC(); // Launch thread
     }
 
     delete serverObj;
