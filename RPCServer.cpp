@@ -9,13 +9,15 @@
 
 #include "RPCServer.h"
 
-#define PORT 8080
+//#define PORT 8081
 
 using namespace std;
 
-RPCServer::RPCServer()
+RPCServer::RPCServer(const char *serverIP, int port)
 {
     m_rpcCount = 0; 
+    m_serverIP = (char *) serverIP;
+    m_port = port;
 };
 
 RPCServer::~RPCServer() {};
@@ -27,7 +29,7 @@ RPCServer::~RPCServer() {};
 bool RPCServer::StartServer()
 {
     int opt = 1;
-    struct sockaddr_in address;
+    const int BACKLOG = 10;
 
 
     // Creating socket file descriptor
@@ -45,18 +47,18 @@ bool RPCServer::StartServer()
         exit(EXIT_FAILURE);
     }
 
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    m_address.sin_family = AF_INET;
+    m_address.sin_addr.s_addr = INADDR_ANY;
+    m_address.sin_port = htons(m_port);
 
     // Forcefully attaching socket to the port 8080
-    if (bind(m_server_fd, (struct sockaddr*)&address,
-        sizeof(address)) < 0)
+    if (bind(m_server_fd, (struct sockaddr*)&m_address,
+        sizeof(m_address)) < 0)
     {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
-    if (listen(m_server_fd, 3) < 0)
+    if (listen(m_server_fd, BACKLOG) < 0)
     {
         perror("listen");
         exit(EXIT_FAILURE);
@@ -72,16 +74,16 @@ bool RPCServer::StartServer()
 
 bool RPCServer::ListenForClient()
 {
-    int new_socket;
-    struct sockaddr_in address;    
-    int addrlen = sizeof(address);
+ 
+    int addrlen = sizeof(m_address);
 
-    if ((new_socket = accept(m_server_fd, (struct sockaddr*)&address,
+    if ((m_socket = accept(m_server_fd, (struct sockaddr*)&m_address,
         (socklen_t*)&addrlen)) < 0)
     {
         perror("accept");
         exit(EXIT_FAILURE);
     }
+
     this->ProcessRPC();
     return true;
 }
@@ -89,7 +91,7 @@ bool RPCServer::ListenForClient()
 /*
 * Going to populate a String vector with tokens extracted from the string the client sent.
 * The delimter will be a ; 
-* An example buffer could be "connect;1;5;abc;def;hello world"
+* An example buffer could be "connect;mike;mike;"
 */
 void RPCServer::ParseTokens(char * buffer, std::vector<std::string> & a)
 {
@@ -111,7 +113,7 @@ void RPCServer::ParseTokens(char * buffer, std::vector<std::string> & a)
 bool RPCServer::ProcessRPC()
 {
     const char* rpcs[] = { "connect", "disconnect", "status"};
-    char buffer[8192];
+    char buffer[1024] = { 0 };
     std::vector<std::string> arrayTokens;
     int valread = 0;
     bool bConnected = false;
@@ -122,8 +124,9 @@ bool RPCServer::ProcessRPC()
     while ((bContinue) && (bStatusOk))
     {
         // Should be blocked when a new RPC has not called us yet
-        if ((valread = read(this->m_server_fd, buffer, sizeof(buffer))) <= 0)
+        if ((valread = read(this->m_socket, buffer, sizeof(buffer))) <= 0)
         {
+            printf("errno is %d\n", errno);
             break;
         }
         printf("%s\n", buffer);
@@ -134,6 +137,7 @@ bool RPCServer::ProcessRPC()
         // Enumerate through the tokens. The first token is always the specific RPC
         for (vector<string>::iterator t = arrayTokens.begin(); t != arrayTokens.end(); ++t)
         {
+            printf("Debugging our tokens\n");
             printf("token = %s\n", t);
         }
 
@@ -141,11 +145,16 @@ bool RPCServer::ProcessRPC()
         string aString = arrayTokens[RPCTOKEN];
 
         if ((bConnected == false) && (aString == "connect"))
+        {
             bStatusOk = ProcessConnectRPC(arrayTokens);  // Connect RPC
+            if (bStatusOk == true)
+                bConnected = true;
+        }
 
         else if ((bConnected == true) && (aString == "disconnect"))
         {
             bStatusOk = ProcessDisconnectRPC();
+            printf("We are going to terminate this endless loop\n");
             bContinue = false; // We are going to leave this loop, as we are done
         }
 
@@ -173,7 +182,7 @@ bool RPCServer::ProcessConnectRPC(std::vector<std::string> & arrayTokens)
     char szBuffer[80];
 
     // Our Authentication Logic. Looks like Mike/Mike is only valid combination
-    if ((userNameString == "mike") && (passwordString == "mike"))
+    if ((userNameString == "MIKE") && (passwordString == "MIKE"))
     {
         strcpy(szBuffer, "1;"); // Connected
     }
@@ -183,18 +192,29 @@ bool RPCServer::ProcessConnectRPC(std::vector<std::string> & arrayTokens)
     }
 
     // Send Response back on our socket
-
-    send(this->m_server_fd, szBuffer, strlen(szBuffer), 0);
+    int nlen = strlen(szBuffer);
+    szBuffer[nlen] = 0;
+    send(this->m_socket, szBuffer, strlen(szBuffer) + 1, 0);
 
     return true;
 }
 
+/* TDB
+*/
 bool RPCServer::ProcessStatusRPC()
 {
     return true;
 }
 
+/*
+*/
 bool RPCServer::ProcessDisconnectRPC()
 {
+    char szBuffer[16];
+    strcpy(szBuffer, "disconnect");
+    // Send Response back on our socket
+    int nlen = strlen(szBuffer);
+    szBuffer[nlen] = 0;
+    send(this->m_socket, szBuffer, strlen(szBuffer) + 1, 0);
     return true;
 }

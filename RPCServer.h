@@ -28,17 +28,20 @@
 class RPCServer
 {
 public:
-    RPCServer();
+    RPCServer(const char *serverIP, int port);
     ~RPCServer();
     bool StartServer();
     bool ListenForClient();
     bool ProcessRPC();
-    int getRpcCount() { return m_rpcCount; }
     void ParseTokens(char* buffer, std::vector<std::string>& a);
 
 private:
     int m_rpcCount;
     int m_server_fd;
+    int m_socket;
+    char* m_serverIP;
+    int m_port;
+    struct sockaddr_in m_address;
 
     // First one in this function should be a connect, and it 
     // will continue try to process RPC's until a Disconnect happens
