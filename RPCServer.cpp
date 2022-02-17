@@ -47,6 +47,7 @@ bool RPCServer::StartServer()
         exit(EXIT_FAILURE);
     }
 
+    // Comment
     m_address.sin_family = AF_INET;
     m_address.sin_addr.s_addr = INADDR_ANY;
     m_address.sin_port = htons(m_port);
