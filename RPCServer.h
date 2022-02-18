@@ -32,7 +32,7 @@ public:
     ~RPCServer();
     bool StartServer();
     bool ListenForClient();
-    bool ProcessRPC();
+
     void ParseTokens(char* buffer, std::vector<std::string>& a);
 
 private:
@@ -43,11 +43,7 @@ private:
     int m_port;
     struct sockaddr_in m_address;
 
-    // First one in this function should be a connect, and it 
-    // will continue try to process RPC's until a Disconnect happens
-    bool ProcessConnectRPC(std::vector<std::string>& arrayTokens);
-    bool ProcessStatusRPC();
-    bool ProcessDisconnectRPC();
+
 
 
 };

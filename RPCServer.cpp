@@ -27,6 +27,7 @@ void* myThreadFun(void* vargp)
     printf("Printing GeeksQuiz from Thread \n");
     RPCImpl *rpcImplObj = new RPCImpl(socket);
     rpcImplObj->ProcessRPC();   // This will go until client disconnects;
+    printf("Done with Thread");
 
     return NULL;
 
@@ -109,7 +110,7 @@ bool RPCServer::ListenForClient()
         // We will hold the thread ID into an array. Who know's we might want to join on them later
 
         pthread_t thread_id;
-        printf("Before Thread\n");
+        printf("Launching Thread\n");
         int socket = m_socket;
         pthread_create(&thread_id, NULL, myThreadFun, (void*)&socket);
         // TODO Probably should save thread_id into some type of array
@@ -153,114 +154,3 @@ void RPCServer::ParseTokens(char * buffer, std::vector<std::string> & a)
 }
 
 
-/*
-* ProcessRPC will examine buffer and will essentially control
-*/
-bool RPCServer::ProcessRPC()
-{
-    const char* rpcs[] = { "connect", "disconnect", "status"};
-    char buffer[1024] = { 0 };
-    std::vector<std::string> arrayTokens;
-    int valread = 0;
-    bool bConnected = false;
-    bool bStatusOk = true;
-    const int RPCTOKEN = 0;
-    bool bContinue = true;
-
-    while ((bContinue) && (bStatusOk))
-    {
-        // Should be blocked when a new RPC has not called us yet
-        if ((valread = read(this->m_socket, buffer, sizeof(buffer))) <= 0)
-        {
-            printf("errno is %d\n", errno);
-            break;
-        }
-        printf("%s\n", buffer);
-
-        arrayTokens.clear();
-        this->ParseTokens(buffer, arrayTokens);
-
-        // Enumerate through the tokens. The first token is always the specific RPC
-        for (vector<string>::iterator t = arrayTokens.begin(); t != arrayTokens.end(); ++t)
-        {
-            printf("Debugging our tokens\n");
-            printf("token = %s\n", t);
-        }
-
-        // string statements are not supported with a switch, so using if/else logic to dispatch
-        string aString = arrayTokens[RPCTOKEN];
-
-        if ((bConnected == false) && (aString == "connect"))
-        {
-            bStatusOk = ProcessConnectRPC(arrayTokens);  // Connect RPC
-            if (bStatusOk == true)
-                bConnected = true;
-        }
-
-        else if ((bConnected == true) && (aString == "disconnect"))
-        {
-            bStatusOk = ProcessDisconnectRPC();
-            printf("We are going to terminate this endless loop\n");
-            bContinue = false; // We are going to leave this loop, as we are done
-        }
-
-        else if ((bConnected == true) && (aString == "status"))
-            bStatusOk = ProcessStatusRPC();   // Status RPC
-
-        else 
-        {
-            // Not in our list, perhaps, print out what was sent
-        }
-
-    }
-
-    return true;
-}
-
-bool RPCServer::ProcessConnectRPC(std::vector<std::string> & arrayTokens)
-{
-    const int USERNAMETOKEN = 1;
-    const int PASSWORDTOKEN = 2;
-
-    // Strip out tokens 1 and 2 (username, password)
-    string userNameString = arrayTokens[USERNAMETOKEN];
-    string passwordString = arrayTokens[PASSWORDTOKEN];
-    char szBuffer[80];
-
-    // Our Authentication Logic. Looks like Mike/Mike is only valid combination
-    if ((userNameString == "MIKE") && (passwordString == "MIKE"))
-    {
-        strcpy(szBuffer, "1;"); // Connected
-    }
-    else
-    {
-        strcpy(szBuffer, "0;"); // Not Connected
-    }
-
-    // Send Response back on our socket
-    int nlen = strlen(szBuffer);
-    szBuffer[nlen] = 0;
-    send(this->m_socket, szBuffer, strlen(szBuffer) + 1, 0);
-
-    return true;
-}
-
-/* TDB
-*/
-bool RPCServer::ProcessStatusRPC()
-{
-    return true;
-}
-
-/*
-*/
-bool RPCServer::ProcessDisconnectRPC()
-{
-    char szBuffer[16];
-    strcpy(szBuffer, "disconnect");
-    // Send Response back on our socket
-    int nlen = strlen(szBuffer);
-    szBuffer[nlen] = 0;
-    send(this->m_socket, szBuffer, strlen(szBuffer) + 1, 0);
-    return true;
-}

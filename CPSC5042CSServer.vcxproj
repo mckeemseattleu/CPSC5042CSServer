@@ -83,6 +83,7 @@
     <ClCompile Include="RPCServer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LocalContext.h" />
     <ClInclude Include="RPCImpl.h" />
     <ClInclude Include="RPCServer.h" />
   </ItemGroup>

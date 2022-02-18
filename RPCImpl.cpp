@@ -8,6 +8,7 @@
 #include <iterator>
 
 #include "RPCImpl.h"
+#include "LocalContext.h"
 
 //#define PORT 8081
 

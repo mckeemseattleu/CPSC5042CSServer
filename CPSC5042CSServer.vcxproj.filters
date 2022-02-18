@@ -8,5 +8,6 @@
   <ItemGroup>
     <ClInclude Include="RPCServer.h" />
     <ClInclude Include="RPCImpl.h" />
+    <ClInclude Include="LocalContext.h" />
   </ItemGroup>
 </Project>
